@@ -28,6 +28,10 @@ struct CAMERA
 	
 	float				len;			// カメラの視点と注視点の距離
 
+	float		time;			// 線形補間用
+	int			tblNo;			// 行動データのテーブル番号
+	int			tblMax;			// そのテーブルのデータ数
+
 };
 
 

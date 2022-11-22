@@ -51,6 +51,11 @@ char	g_DebugStr[2048] = WINDOW_NAME;		// デバッグ文字表示用
 #endif
 
 
+
+
+
+
+
 //=============================================================================
 // メイン関数
 //=============================================================================
@@ -352,8 +357,8 @@ void Draw(void)
 
 	// プレイヤー視点
 	XMFLOAT3 pos = GetPlayer()->pos;
-	pos.y = 0.0f;			// カメラ酔いを防ぐためにクリアしている
-	SetCameraAT(pos);
+	
+	
 	SetCamera();
 
 	// 地面の描画処理
@@ -374,7 +379,7 @@ void Draw(void)
 	DrawMeshWall();
 
 	// 木の描画処理
-	DrawTree();
+	//DrawTree();
 
 
 #ifdef _DEBUG
@@ -414,33 +419,33 @@ char* GetDebugStr(void)
 void CheckHit(void)
 {
 	ENEMY *enemy = GetEnemy();		// エネミーのポインターを初期化
-	PLAYER *player = GetPlayer();	// プレイヤーのポインターを初期化
+	//PLAYER *player = GetPlayer();	// プレイヤーのポインターを初期化
 
 
-	// 敵とプレイヤーキャラ
-	for (int i = 0; i < MAX_ENEMY; i++)
-	{
-		//敵の有効フラグをチェックする
-		if (enemy[i].use == false)
-			continue;
+	//// 敵とプレイヤーキャラ
+	//for (int i = 0; i < MAX_ENEMY; i++)
+	//{
+	//	//敵の有効フラグをチェックする
+	//	if (enemy[i].use == false)
+	//		continue;
 
-		//プレイヤーは生きてる？
-		if (!player->use)
-			continue;
+	//	//プレイヤーは生きてる？
+	//	if (!player->use)
+	//		continue;
 
-		//BCの当たり判定
-		if (CollisionBC(player->pos, enemy[i].pos, player->size, enemy[i].size))
-		{
-			// 敵キャラクターは倒される
-			enemy[i].use = false;
-			ReleaseShadow(enemy[i].shadowIdx);
-			continue;
+	//	//BCの当たり判定
+	//	if (CollisionBC(player->pos, enemy[i].pos, player->size, enemy[i].size))
+	//	{
+	//		// 敵キャラクターは倒される
+	//		enemy[i].use = false;
+	//		ReleaseShadow(enemy[i].shadowIdx);
+	//		continue;
 
-			// スコアを足す
-			
-		}
-		
-	}
+	//		// スコアを足す
+	//		
+	//	}
+	//	
+	//}
 
 
 

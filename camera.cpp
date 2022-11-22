@@ -8,7 +8,7 @@
 #include "input.h"
 #include "camera.h"
 #include "debugproc.h"
-
+#include "enemy.h"
 //*****************************************************************************
 // マクロ定義
 //*****************************************************************************
@@ -36,6 +36,18 @@ static CAMERA			g_Camera;		// カメラデータ
 
 static int				g_ViewPortType = TYPE_FULL_SCREEN;
 
+static INTERPOLATION_DATAPOINT g_moveList[] = {
+	//座標								回転率							拡大率							時間
+	{ XMFLOAT3(650.0f,   200.0f, -650.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		500},
+	{ XMFLOAT3(-600.0f,   7.0f, -600.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		500 },
+	{ XMFLOAT3(0.0f,   7.0f, 0.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		1 },
+};
+
+static INTERPOLATION_DATAPOINT* g_MoveListMngr[] =
+{
+	g_moveList,
+};
+
 //=============================================================================
 // 初期化処理
 //=============================================================================
@@ -51,7 +63,10 @@ void InitCamera(void)
 	vx = g_Camera.pos.x - g_Camera.at.x;
 	vz = g_Camera.pos.z - g_Camera.at.z;
 	g_Camera.len = sqrtf(vx * vx + vz * vz);
-	
+
+	g_Camera.time = 0.0f;		// 線形補間用のタイマーをクリア
+	g_Camera.tblNo = 0;		// 再生するアニメデータの先頭アドレスをセット
+	g_Camera.tblMax = sizeof(g_moveList) / sizeof(INTERPOLATION_DATAPOINT);	// 再生するアニメデータのレコード数をセット
 	// ビューポートタイプの初期化
 	g_ViewPortType = TYPE_FULL_SCREEN;
 }
@@ -72,104 +87,37 @@ void UninitCamera(void)
 void UpdateCamera(void)
 {
 
-#ifdef _DEBUG
+	int nowNo = (int)g_Camera.time;			// 整数分であるテーブル番号を取り出している
+	int maxNo = g_Camera.tblMax;				// 登録テーブル数を数えている
+	int nextNo = (nowNo + 1) % maxNo;			// 移動先テーブルの番号を求めている
+	INTERPOLATION_DATAPOINT* tbl = g_MoveListMngr[g_Camera.tblNo];	// 行動テーブルのアドレスを取得
 
-	if (GetKeyboardPress(DIK_Z))
-	{// 視点旋回「左」
-		g_Camera.rot.y += VALUE_ROTATE_CAMERA;
-		if (g_Camera.rot.y > XM_PI)
-		{
-			g_Camera.rot.y -= XM_PI * 2.0f;
-		}
+	XMVECTOR nowPos = XMLoadFloat3(&tbl[nowNo].pos);	// XMVECTORへ変換
+	XMVECTOR nowRot = XMLoadFloat3(&tbl[nowNo].rot);	// XMVECTORへ変換
+	XMVECTOR nowScl = XMLoadFloat3(&tbl[nowNo].scl);	// XMVECTORへ変換
 
-		g_Camera.pos.x = g_Camera.at.x - sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.pos.z = g_Camera.at.z - cosf(g_Camera.rot.y) * g_Camera.len;
-	}
+	XMVECTOR Pos = XMLoadFloat3(&tbl[nextNo].pos) - nowPos;	// XYZ移動量を計算している
+	XMVECTOR Rot = XMLoadFloat3(&tbl[nextNo].rot) - nowRot;	// XYZ回転量を計算している
+	XMVECTOR Scl = XMLoadFloat3(&tbl[nextNo].scl) - nowScl;	// XYZ拡大率を計算している
 
-	if (GetKeyboardPress(DIK_C))
-	{// 視点旋回「右」
-		g_Camera.rot.y -= VALUE_ROTATE_CAMERA;
-		if (g_Camera.rot.y < -XM_PI)
-		{
-			g_Camera.rot.y += XM_PI * 2.0f;
-		}
+	float nowTime = g_Camera.time - nowNo;	// 時間部分である少数を取り出している
 
-		g_Camera.pos.x = g_Camera.at.x - sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.pos.z = g_Camera.at.z - cosf(g_Camera.rot.y) * g_Camera.len;
-	}
+	Pos *= nowTime;								// 現在の移動量を計算している
+	Rot *= nowTime;								// 現在の回転量を計算している
+	Scl *= nowTime;								// 現在の拡大率を計算している
 
-	if (GetKeyboardPress(DIK_Y))
-	{// 視点移動「上」
-		g_Camera.pos.y += VALUE_MOVE_CAMERA;
-	}
+	// 計算して求めた移動量を現在の移動テーブルXYZに足している＝表示座標を求めている
+	XMStoreFloat3(&g_Camera.pos, nowPos + Pos);
 
-	if (GetKeyboardPress(DIK_N))
-	{// 視点移動「下」
-		g_Camera.pos.y -= VALUE_MOVE_CAMERA;
-	}
+	// 計算して求めた回転量を現在の移動テーブルに足している
+	XMStoreFloat3(&g_Camera.rot, nowRot + Rot);
 
-	if (GetKeyboardPress(DIK_Q))
-	{// 注視点旋回「左」
-		g_Camera.rot.y -= VALUE_ROTATE_CAMERA;
-		if (g_Camera.rot.y < -XM_PI)
-		{
-			g_Camera.rot.y += XM_PI * 2.0f;
-		}
-
-		g_Camera.at.x = g_Camera.pos.x + sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.at.z = g_Camera.pos.z + cosf(g_Camera.rot.y) * g_Camera.len;
-	}
-
-	if (GetKeyboardPress(DIK_E))
-	{// 注視点旋回「右」
-		g_Camera.rot.y += VALUE_ROTATE_CAMERA;
-		if (g_Camera.rot.y > XM_PI)
-		{
-			g_Camera.rot.y -= XM_PI * 2.0f;
-		}
-
-		g_Camera.at.x = g_Camera.pos.x + sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.at.z = g_Camera.pos.z + cosf(g_Camera.rot.y) * g_Camera.len;
-	}
-
-	if (GetKeyboardPress(DIK_T))
-	{// 注視点移動「上」
-		g_Camera.at.y += VALUE_MOVE_CAMERA;
-	}
-
-	if (GetKeyboardPress(DIK_B))
-	{// 注視点移動「下」
-		g_Camera.at.y -= VALUE_MOVE_CAMERA;
-	}
-
-	if (GetKeyboardPress(DIK_U))
-	{// 近づく
-		g_Camera.len -= VALUE_MOVE_CAMERA;
-		g_Camera.pos.x = g_Camera.at.x - sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.pos.z = g_Camera.at.z - cosf(g_Camera.rot.y) * g_Camera.len;
-	}
-
-	if (GetKeyboardPress(DIK_M))
-	{// 離れる
-		g_Camera.len += VALUE_MOVE_CAMERA;
-		g_Camera.pos.x = g_Camera.at.x - sinf(g_Camera.rot.y) * g_Camera.len;
-		g_Camera.pos.z = g_Camera.at.z - cosf(g_Camera.rot.y) * g_Camera.len;
-	}
-
-	// カメラを初期に戻す
-	if (GetKeyboardPress(DIK_R))
+	// frameを使て時間経過処理をする
+	g_Camera.time += 1.0f / tbl[nowNo].frame;	// 時間を進めている
+	if ((int)g_Camera.time >= maxNo)			// 登録テーブル最後まで移動したか？
 	{
-		UninitCamera();
-		InitCamera();
+		g_Camera.time -= maxNo;				// ０番目にリセットしつつも小数部分を引き継いでいる
 	}
-
-#endif
-
-
-
-#ifdef _DEBUG	// デバッグ情報を表示する
-	PrintDebugProc("Camera:ZC QE TB YN UM R\n");
-#endif
 }
 
 
@@ -178,9 +126,22 @@ void UpdateCamera(void)
 //=============================================================================
 void SetCamera(void) 
 {
+	ENEMY* enemy = GetEnemy();
 	// ビューマトリックス設定
 	XMMATRIX mtxView;
-	mtxView = XMMatrixLookAtLH(XMLoadFloat3(&g_Camera.pos), XMLoadFloat3(&g_Camera.at), XMLoadFloat3(&g_Camera.up));
+	int look = g_Camera.time + 1 % g_Camera.tblMax;
+	XMFLOAT3 lookahead = g_moveList[look].pos;
+	switch (look) {
+	case 1:
+		
+		mtxView = XMMatrixLookAtLH(XMLoadFloat3(&g_Camera.pos), XMLoadFloat3(&enemy[0].pos), XMLoadFloat3(&g_Camera.up));
+		break;
+	default:
+		mtxView = XMMatrixLookAtLH(XMLoadFloat3(&g_Camera.pos), XMLoadFloat3(&lookahead), XMLoadFloat3(&g_Camera.up));
+		break;
+	}
+	
+	
 	SetViewMatrix(&mtxView);
 	XMStoreFloat4x4(&g_Camera.mtxView, mtxView);
 

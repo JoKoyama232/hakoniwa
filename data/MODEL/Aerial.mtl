@@ -1,0 +1,54 @@
+newmtl TEMPORARY_IMPORT_NAMESPACE__K______:lambert3SG
+illum 4
+Kd 0.10 0.24 0.54
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl TEMPORARY_IMPORT_NAMESPACE__K______:lambert4SG
+illum 4
+Kd 0.92 0.93 1.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl TEMPORARY_IMPORT_NAMESPACE__K______:lambert5SG
+illum 4
+Kd 0.47 0.00 0.06
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl initialShadingGroup
+illum 4
+Kd 0.50 0.50 0.50
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl lambert3SG
+illum 4
+Kd 0.09 0.10 0.33
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl pasted__set7
+illum 4
+Kd 0.71 0.65 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl pasted__set8
+illum 4
+Kd 0.92 0.93 1.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl pasted__set9
+illum 4
+Kd 0.47 0.00 0.06
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00
+newmtl set6
+illum 4
+Kd 0.00 0.00 0.00
+Ka 0.00 0.00 0.00
+Tf 1.00 1.00 1.00
+Ni 1.00

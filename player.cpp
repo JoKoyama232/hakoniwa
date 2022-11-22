@@ -114,7 +114,7 @@ void UpdatePlayer(void)
 	{	// ファイヤー！！
 		if (cooldown < 0) 
 		{
-			FireBullet();
+			//FireBullet();
 			PlaySound(SOUND_LABEL_SE_shot000);
 			cooldown = 60;
 		}

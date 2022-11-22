@@ -6,7 +6,7 @@
 //=============================================================================
 #include "main.h"
 #include "renderer.h"
-#include "model.h"
+
 #include "input.h"
 #include "debugproc.h"
 #include "enemy.h"
@@ -16,14 +16,22 @@
 // マクロ定義
 //*****************************************************************************
 #define	MODEL_ENEMY			"data/MODEL/enemy.obj"		// 読み込むモデル名
-
+#define MODEL_GUN			"data/MODEL/gun.obj"
+#define MODEL_SHEILD		"data/MODEL/shield.obj"
+#define MODEL_FUNNEL		"data/MODEL/FinFunnel_s.obj"
+#define MODEL_ARIEL			"data/MODEL/Aerial.obj"
 #define	VALUE_MOVE			(5.0f)						// 移動量
 #define	VALUE_ROTATE		(XM_PI * 0.02f)				// 回転量
 
 #define ENEMY_SHADOW_SIZE	(0.4f)						// 影の大きさ
 #define ENEMY_OFFSET_Y		(7.0f)						// エネミーの足元をあわせる
 
-
+enum {
+	aerial = 0,
+	funnel,
+	shield,
+	gun,
+};
 //*****************************************************************************
 // プロトタイプ宣言
 //*****************************************************************************
@@ -36,6 +44,18 @@ static ENEMY			g_Enemy[MAX_ENEMY];				// エネミー
 
 int g_Enemy_load = 0;
 
+static INTERPOLATION_DATAPOINT g_moveList[] = {
+	//座標								回転率							拡大率							時間
+	{ XMFLOAT3( 0.0f,   7.0f, 0.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		30 },
+	{ XMFLOAT3(100.0f,  7.0f, 100.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		30 },
+	{ XMFLOAT3(50.0f,  7.0f, 100.0f),	XMFLOAT3(0.0f, 0.0f, 0.0f),		XMFLOAT3(1.0f, 1.0f, 1.0f),		30 },
+};
+
+static INTERPOLATION_DATAPOINT* g_MoveListMngr[] =
+{
+	g_moveList,
+};
+
 
 //=============================================================================
 // 初期化処理
@@ -44,10 +64,28 @@ HRESULT InitEnemy(void)
 {
 	for (int i = 0; i < MAX_ENEMY; i++)
 	{
-		LoadModel(MODEL_ENEMY, &g_Enemy[i].model);
+		switch (i) {
+		case 0:
+			LoadModel(MODEL_ARIEL, &g_Enemy[i].model);
+			break;
+		case 1:
+			LoadModel(MODEL_FUNNEL, &g_Enemy[i].model);
+			break;
+		case 2:
+			LoadModel(MODEL_SHEILD, &g_Enemy[i].model);
+			break;
+		case 3:
+			LoadModel(MODEL_GUN, &g_Enemy[i].model);
+			break;
+		default:
+			LoadModel(MODEL_ENEMY, &g_Enemy[i].model);
+			break;
+
+		}
+		
 		g_Enemy[i].load = true;
 
-		g_Enemy[i].pos = XMFLOAT3(-50.0f + i * 30.0f, 7.0f, 20.0f);
+		g_Enemy[i].pos = XMFLOAT3(-50.0f + i * 30.0f, 50.0f, 20.0f);
 		g_Enemy[i].rot = XMFLOAT3(0.0f, 0.0f, 0.0f);
 		g_Enemy[i].scl = XMFLOAT3(1.0f, 1.0f, 1.0f);
 
@@ -61,6 +99,10 @@ HRESULT InitEnemy(void)
 		pos.y -= (ENEMY_OFFSET_Y - 0.1f);
 		g_Enemy[i].shadowIdx = CreateShadow(pos, ENEMY_SHADOW_SIZE, ENEMY_SHADOW_SIZE);
 		
+		g_Enemy[0].time = 0.0f;		// 線形補間用のタイマーをクリア
+		g_Enemy[0].tblNo = 0;		// 再生するアニメデータの先頭アドレスをセット
+		g_Enemy[0].tblMax = sizeof(g_moveList) / sizeof(INTERPOLATION_DATAPOINT);	// 再生するアニメデータのレコード数をセット
+
 		g_Enemy[i].use = true;		// true:生きてる
 
 	}
@@ -96,12 +138,36 @@ void UpdateEnemy(void)
 		if (g_Enemy[i].use == true)		// このエネミーが使われている？
 		{								// Yes
 
+			switch (i) {
+			case aerial:
+				g_Enemy[i].pos = XMFLOAT3(100.0f, -100.0f, 10.0f);
+				g_Enemy[i].rot = XMFLOAT3(-3.14f/4, +3.14f / 4, 0.0f);
+				g_Enemy[i].scl = XMFLOAT3(6.0f, 6.0f, 6.0f);
+				break;
+			case funnel:
+				g_Enemy[i].pos = XMFLOAT3(-50.0f + i * 30.0f, 50.0f, 20.0f);
+				g_Enemy[i].rot = XMFLOAT3(3.14f/2, 0.0f, 3.14f);
+				g_Enemy[i].scl = XMFLOAT3(3.0f, 3.0f, 3.0f);
+				break;
+			case shield:
+				g_Enemy[i].pos = XMFLOAT3(220, 25.0f, 50.0f);
+				g_Enemy[i].rot = XMFLOAT3(-3.14f / 4, +3.14f / 3, 0.0f);
+				g_Enemy[i].scl = XMFLOAT3(5.0f, 3.0f, 3.0f);
+				break;
+			case gun:
+				g_Enemy[i].pos = XMFLOAT3(-50.0f + i * 30.0f, 50.0f, 20.0f);
+				g_Enemy[i].rot = XMFLOAT3(0.0f, 0.0f, 0.0f);
+				g_Enemy[i].scl = XMFLOAT3(1.0f, 1.0f, 1.0f);
+				break;
+			default:
+				g_Enemy[i].pos = XMFLOAT3(-50.0f + i * 30.0f, 50.0f, 20.0f);
+				g_Enemy[i].rot = XMFLOAT3(0.0f, 0.0f, 0.0f);
+				g_Enemy[i].scl = XMFLOAT3(1.0f, 1.0f, 1.0f);
+				break;
 
+			}
 
-			// 影もプレイヤーの位置に合わせる
-			XMFLOAT3 pos = g_Enemy[i].pos;
-			pos.y -= (ENEMY_OFFSET_Y - 0.1f);
-			SetPositionShadow(g_Enemy[i].shadowIdx, pos);
+	
 		}
 	}
 
